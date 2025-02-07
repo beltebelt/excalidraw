@@ -1001,7 +1001,7 @@ const ExcalidrawWrapper = (props: ExcalidrawAppProps) => {
   );
 };
 
-const ExcalidrawApp = (props: ExcalidrawAppProps) => {
+export const ExcalidrawApp = (props: ExcalidrawAppProps) => {
   return (
     <TopErrorBoundary>
       <Provider store={appJotaiStore}>
@@ -1010,5 +1010,3 @@ const ExcalidrawApp = (props: ExcalidrawAppProps) => {
     </TopErrorBoundary>
   );
 };
-
-export default ExcalidrawApp;

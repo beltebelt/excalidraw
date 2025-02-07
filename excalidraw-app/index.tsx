@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import ExcalidrawApp from "../packages/excalidraw/ExcalidrawApp";
+import {ExcalidrawApp} from "../packages/excalidraw/ExcalidrawApp";
 import { registerSW } from "virtual:pwa-register";
 
 import "../excalidraw-app/sentry";
