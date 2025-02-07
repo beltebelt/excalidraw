@@ -48,13 +48,6 @@ import {
   getSyncableElements,
 } from "../collabData";
 import {
-  isSavedToStorage,
-  loadFilesFromStorage,
-  loadFromStorage,
-  saveFilesToStorage,
-  saveToStorage,
-} from "../collabData/storage";
-import {
   importUsernameFromLocalStorage,
   saveUsernameToLocalStorage,
 } from "../collabData/localStorage";
@@ -85,6 +78,7 @@ import type {
   ReconciledExcalidrawElement,
   RemoteExcalidrawElement,
 } from "../data/reconcile";
+import type { Storage } from "../collabData/storage";
 
 export const collabAPIAtom = atom<CollabAPI | null>(null);
 export const isCollaboratingAtom = atom(false);
@@ -117,6 +111,9 @@ export interface CollabAPI {
 }
 
 interface CollabProps {
+  storage: Storage;
+  collabServerUrl: string;
+  collabDetails?: { roomId: string; roomKey: string };
   excalidrawAPI: ExcalidrawImperativeAPI;
 }
 
@@ -147,7 +144,11 @@ class Collab extends PureComponent<CollabProps, CollabState> {
           throw new AbortError();
         }
 
-        return loadFilesFromStorage(`files/rooms/${roomId}`, roomKey, fileIds);
+        return props.storage.loadFilesFromStorage(
+          `files/rooms/${roomId}`,
+          roomKey,
+          fileIds,
+        );
       },
       saveFiles: async ({ addedFiles }) => {
         const { roomId, roomKey } = this.portal;
@@ -155,18 +156,19 @@ class Collab extends PureComponent<CollabProps, CollabState> {
           throw new AbortError();
         }
 
-        const { savedFiles, erroredFiles } = await saveFilesToStorage({
-          prefix: `${FIREBASE_STORAGE_PREFIXES.collabFiles}/${roomId}`,
-          files: await encodeFilesForUpload({
-            files: addedFiles,
-            encryptionKey: roomKey,
-            maxBytes: FILE_UPLOAD_MAX_BYTES,
-          }),
-        });
+        const { savedFiles, erroredFiles } =
+          await props.storage.saveFilesToStorage({
+            prefix: `${FIREBASE_STORAGE_PREFIXES.collabFiles}/${roomId}`,
+            files: await encodeFilesForUpload({
+              files: addedFiles,
+              encryptionKey: roomKey,
+              maxBytes: FILE_UPLOAD_MAX_BYTES,
+            }),
+          });
 
         return {
           savedFiles: savedFiles.reduce(
-            (acc: Map<FileId, BinaryFileData>, id) => {
+            (acc: Map<FileId, BinaryFileData>, id: FileId) => {
               const fileData = addedFiles.get(id);
               if (fileData) {
                 acc.set(id, fileData);
@@ -176,7 +178,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
             new Map(),
           ),
           erroredFiles: erroredFiles.reduce(
-            (acc: Map<FileId, BinaryFileData>, id) => {
+            (acc: Map<FileId, BinaryFileData>, id: FileId) => {
               const fileData = addedFiles.get(id);
               if (fileData) {
                 acc.set(id, fileData);
@@ -286,7 +288,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
     if (
       this.isCollaborating() &&
       (this.fileManager.shouldPreventUnload(syncableElements) ||
-        !isSavedToStorage(this.portal, syncableElements))
+        !this.props.storage.isSavedToStorage(this.portal, syncableElements))
     ) {
       // this won't run in time if user decides to leave the site, but
       //  the purpose is to run in immediately after user decides to stay
@@ -300,7 +302,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
     syncableElements: readonly SyncableExcalidrawElement[],
   ) => {
     try {
-      const storedElements = await saveToStorage(
+      const storedElements = await this.props.storage.saveToStorage(
         this.portal,
         syncableElements,
         this.excalidrawAPI.getAppState(),
@@ -504,7 +506,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
 
     try {
       this.portal.socket = this.portal.open(
-        socketIOClient(import.meta.env.VITE_APP_WS_SERVER_URL, {
+        socketIOClient(this.props.collabServerUrl, {
           transports: ["websocket", "polling"],
         }),
         roomId,
@@ -699,7 +701,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
       this.excalidrawAPI.resetScene();
 
       try {
-        const elements = await loadFromStorage(
+        const elements = await this.props.storage.loadFromStorage(
           roomLinkData.roomId,
           roomLinkData.roomKey,
           this.portal.socket,
@@ -750,10 +752,11 @@ class Collab extends PureComponent<CollabProps, CollabState> {
   };
 
   private loadImageFiles = throttle(async () => {
-    const { loadedFiles, erroredFiles } =
-      await this.fetchImageFilesFromStorage({
+    const { loadedFiles, erroredFiles } = await this.fetchImageFilesFromStorage(
+      {
         elements: this.excalidrawAPI.getSceneElementsIncludingDeleted(),
-      });
+      },
+    );
 
     this.excalidrawAPI.addFiles(loadedFiles);
 

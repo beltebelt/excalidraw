@@ -32,7 +32,6 @@ import {
   ROOM_ID_BYTES,
 } from "../app_constants";
 import { encodeFilesForUpload } from "./FileManager";
-import { saveFilesToStorage } from "./storage";
 
 export type SyncableExcalidrawElement = OrderedExcalidrawElement &
   MakeBrand<"SyncableExcalidrawElement">;
@@ -277,6 +276,19 @@ export const exportToBackend = async (
   elements: readonly ExcalidrawElement[],
   appState: Partial<AppState>,
   files: BinaryFiles,
+  saveFilesToStorage: ({
+    prefix,
+    files,
+  }: {
+    prefix: string;
+    files: {
+      id: FileId;
+      buffer: Uint8Array;
+    }[];
+  }) => Promise<{
+    savedFiles: FileId[];
+    erroredFiles: FileId[];
+  }>,
 ): Promise<ExportToBackendResult> => {
   const encryptionKey = await generateEncryptionKey("string");
 

@@ -33,6 +33,7 @@ import type {
   ExcalidrawInitialDataState,
   UIAppState,
   BinaryFileData,
+  ExcalidrawProps,
 } from "./types";
 import type { ResolvablePromise } from "./utils";
 import {
@@ -46,7 +47,6 @@ import {
 } from "./utils";
 import {
   FIREBASE_STORAGE_PREFIXES,
-  isExcalidrawPlusSignedUser,
   STORAGE_KEYS,
   SYNC_BROWSER_TABS_TIMEOUT,
 } from "./app_constants";
@@ -72,7 +72,6 @@ import { restore, restoreAppState } from "./data/restore";
 import { updateStaleImageStatuses } from "./collabData/FileManager";
 import { newElementWith } from "./element/mutateElement";
 import { isInitializedImageElement } from "./element/typeChecks";
-import { loadFilesFromStorage } from "./collabData/storage";
 import {
   LibraryIndexedDBAdapter,
   LibraryLocalStorageMigrationAdapter,
@@ -90,6 +89,7 @@ import {
   useAtomValue,
   useAtomWithInitialValue,
   appJotaiStore,
+  atom,
 } from "./app-jotai";
 
 import "./index.scss";
@@ -106,14 +106,9 @@ import {
   DEFAULT_CATEGORIES,
 } from "./components/CommandPalette/CommandPalette";
 import {
-  GithubIcon,
-  XBrandIcon,
-  DiscordIcon,
   ExcalLogo,
   usersIcon,
-  exportToPlus,
   share,
-  youtubeIcon,
 } from "./components/icons";
 import { useHandleAppTheme } from "./useHandleAppTheme";
 import { getPreferredLanguage } from "./app-language/language-detector";
@@ -124,6 +119,17 @@ import DebugCanvas, {
   loadSavedDebugState,
 } from "./components/DebugCanvas";
 import { isElementLink } from "./element/elementLink";
+import { Storage } from "./collabData/storage";
+export const storageServerUrlAtom = atom<string>("");
+
+interface ExcalidrawAppProps {
+  collabServerUrl: string;
+  storageServerUrl: string;
+  collabDetails?: { roomId: string; roomKey: string };
+  excalidraw: ExcalidrawProps;
+  getExcalidrawAPI?: Function;
+  getCollabAPI?: Function;
+}
 
 polyfill();
 
@@ -320,7 +326,9 @@ const initializeScene = async (opts: {
   return { scene: null, isExternalScene: false };
 };
 
-const ExcalidrawWrapper = () => {
+const ExcalidrawWrapper = (props: ExcalidrawAppProps) => {
+  appJotaiStore.set(storageServerUrlAtom, props.storageServerUrl);
+  const storage = new Storage();
   const [errorMessage, setErrorMessage] = useState("");
   const isCollabDisabled = isRunningInIframe();
 
@@ -429,18 +437,20 @@ const ExcalidrawWrapper = () => {
           }, [] as FileId[]) || [];
 
         if (data.isExternalScene) {
-          loadFilesFromStorage(
-            `${FIREBASE_STORAGE_PREFIXES.shareLinkFiles}/${data.id}`,
-            data.key,
-            fileIds,
-          ).then(({ loadedFiles, erroredFiles }) => {
-            excalidrawAPI.addFiles(loadedFiles);
-            updateStaleImageStatuses({
-              excalidrawAPI,
-              erroredFiles,
-              elements: excalidrawAPI.getSceneElementsIncludingDeleted(),
+          storage
+            .loadFilesFromStorage(
+              `${FIREBASE_STORAGE_PREFIXES.shareLinkFiles}/${data.id}`,
+              data.key,
+              fileIds,
+            )
+            .then(({ loadedFiles, erroredFiles }) => {
+              excalidrawAPI.addFiles(loadedFiles);
+              updateStaleImageStatuses({
+                excalidrawAPI,
+                erroredFiles,
+                elements: excalidrawAPI.getSceneElementsIncludingDeleted(),
+              });
             });
-          });
         } else if (isInitialLoad) {
           if (fileIds.length) {
             LocalData.fileStorage
@@ -685,6 +695,7 @@ const ExcalidrawWrapper = () => {
             : getDefaultAppState().viewBackgroundColor,
         },
         files,
+        storage.saveFilesToStorage,
       );
 
       if (errorMessage) {
@@ -793,17 +804,12 @@ const ExcalidrawWrapper = () => {
       })}
     >
       <Excalidraw
+        {...props.excalidraw}
         excalidrawAPI={excalidrawRefCallback}
         onChange={onChange}
         initialData={initialStatePromiseRef.current.promise}
         isCollaborating={isCollaborating}
         onPointerUpdate={collabAPI?.onPointerUpdate}
-        UIOptions={{
-          canvasActions: {
-            toggleTheme: true,
-            export: false,
-          },
-        }}
         langCode={langCode}
         renderCustomStats={renderCustomStats}
         detectScroll={false}
@@ -865,7 +871,11 @@ const ExcalidrawWrapper = () => {
           />
         )}
         {excalidrawAPI && !isCollabDisabled && (
-          <Collab excalidrawAPI={excalidrawAPI} />
+          <Collab
+            collabServerUrl={props.collabServerUrl}
+            storage={storage}
+            excalidrawAPI={excalidrawAPI}
+          />
         )}
 
         <ShareDialog
@@ -955,90 +965,6 @@ const ExcalidrawWrapper = () => {
               },
             },
             {
-              label: "GitHub",
-              icon: GithubIcon,
-              category: DEFAULT_CATEGORIES.links,
-              predicate: true,
-              keywords: [
-                "issues",
-                "bugs",
-                "requests",
-                "report",
-                "features",
-                "social",
-                "community",
-              ],
-              perform: () => {
-                window.open(
-                  "https://github.com/excalidraw/excalidraw",
-                  "_blank",
-                  "noopener noreferrer",
-                );
-              },
-            },
-            {
-              label: t("labels.followUs"),
-              icon: XBrandIcon,
-              category: DEFAULT_CATEGORIES.links,
-              predicate: true,
-              keywords: ["twitter", "contact", "social", "community"],
-              perform: () => {
-                window.open(
-                  "https://x.com/excalidraw",
-                  "_blank",
-                  "noopener noreferrer",
-                );
-              },
-            },
-            {
-              label: t("labels.discordChat"),
-              category: DEFAULT_CATEGORIES.links,
-              predicate: true,
-              icon: DiscordIcon,
-              keywords: [
-                "chat",
-                "talk",
-                "contact",
-                "bugs",
-                "requests",
-                "report",
-                "feedback",
-                "suggestions",
-                "social",
-                "community",
-              ],
-              perform: () => {
-                window.open(
-                  "https://discord.gg/UexuTaE",
-                  "_blank",
-                  "noopener noreferrer",
-                );
-              },
-            },
-            {
-              label: "YouTube",
-              icon: youtubeIcon,
-              category: DEFAULT_CATEGORIES.links,
-              predicate: true,
-              keywords: ["features", "tutorials", "howto", "help", "community"],
-              perform: () => {
-                window.open(
-                  "https://youtube.com/@excalidraw",
-                  "_blank",
-                  "noopener noreferrer",
-                );
-              },
-            },
-            ...(isExcalidrawPlusSignedUser
-              ? [
-                  {
-                    ...ExcalidrawPlusAppCommand,
-                    label: "Sign in / Go to Excalidraw+",
-                  },
-                ]
-              : [ExcalidrawPlusCommand, ExcalidrawPlusAppCommand]),
-
-            {
               ...CommandPalette.defaultItems.toggleTheme,
               perform: () => {
                 setAppTheme(
@@ -1075,11 +1001,11 @@ const ExcalidrawWrapper = () => {
   );
 };
 
-const ExcalidrawApp = () => {
+const ExcalidrawApp = (props: ExcalidrawAppProps) => {
   return (
     <TopErrorBoundary>
       <Provider store={appJotaiStore}>
-        <ExcalidrawWrapper />
+        <ExcalidrawWrapper {...props} />
       </Provider>
     </TopErrorBoundary>
   );

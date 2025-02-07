@@ -10,6 +10,10 @@ const root = createRoot(rootElement);
 registerSW();
 root.render(
   <StrictMode>
-    <ExcalidrawApp />
+    <ExcalidrawApp
+      excalidraw={{aiEnabled:false,UIOptions:{canvasActions:{export:false,loadScene:false,saveToActiveFile:false}}}}
+      collabServerUrl="http://localhost:3002"
+      storageServerUrl="http://localhost:8090"
+    />
   </StrictMode>,
 );
