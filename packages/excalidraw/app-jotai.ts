@@ -10,7 +10,7 @@ import {
 } from "jotai";
 import { useLayoutEffect } from "react";
 
-export const appJotaiStore = createStore();
+export const appJotaiStore: ReturnType<typeof createStore> = createStore();
 
 export { atom, Provider, useAtom, useAtomValue, useSetAtom };
 
