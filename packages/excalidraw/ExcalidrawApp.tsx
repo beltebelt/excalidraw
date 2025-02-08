@@ -105,11 +105,7 @@ import {
   CommandPalette,
   DEFAULT_CATEGORIES,
 } from "./components/CommandPalette/CommandPalette";
-import {
-  ExcalLogo,
-  usersIcon,
-  share,
-} from "./components/icons";
+import { ExcalLogo, usersIcon, share } from "./components/icons";
 import { useHandleAppTheme } from "./useHandleAppTheme";
 import { getPreferredLanguage } from "./app-language/language-detector";
 import { useAppLangCode } from "./app-language/language-state";
@@ -119,12 +115,11 @@ import DebugCanvas, {
   loadSavedDebugState,
 } from "./components/DebugCanvas";
 import { isElementLink } from "./element/elementLink";
-import { Storage } from "./collabData/storage";
-export const storageServerUrlAtom = atom<string>("");
+import { Storage, StorageProvider } from "./collabData/storage";
 
 interface ExcalidrawAppProps {
   collabServerUrl: string;
-  storageServerUrl: string;
+  storageProvider: StorageProvider;
   collabDetails?: { roomId: string; roomKey: string };
   excalidraw: ExcalidrawProps;
   getExcalidrawAPI?: Function;
@@ -327,8 +322,7 @@ const initializeScene = async (opts: {
 };
 
 const ExcalidrawWrapper = (props: ExcalidrawAppProps) => {
-  appJotaiStore.set(storageServerUrlAtom, props.storageServerUrl);
-  const storage = new Storage();
+  const storage = new Storage(props.storageProvider);
   const [errorMessage, setErrorMessage] = useState("");
   const isCollabDisabled = isRunningInIframe();
 

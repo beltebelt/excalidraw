@@ -207,6 +207,7 @@ const areEqual = (prevProps: ExcalidrawProps, nextProps: ExcalidrawProps) => {
 
 export const Excalidraw = React.memo(ExcalidrawBase, areEqual);
 export { ExcalidrawApp } from "./ExcalidrawApp";
+export type { StorageProvider } from "./collabData/storage";
 Excalidraw.displayName = "Excalidraw";
 
 export {

@@ -20,27 +20,26 @@ import type { SyncableExcalidrawElement } from ".";
 import { getSyncableElements } from ".";
 import type { Socket } from "socket.io-client";
 import type { RemoteExcalidrawElement } from "../data/reconcile";
-import PocketBase from "pocketbase";
-import { appJotaiStore } from "../app-jotai";
-import { storageServerUrlAtom } from "../ExcalidrawApp";
 
-
-export interface StorageClass {
+interface StorageClass {
   isSavedToStorage: (portal: Portal, elements: readonly ExcalidrawElement[]) => boolean;
   saveFilesToStorage: ({ prefix, files, }: { prefix: string; files: { id: FileId; buffer: Uint8Array; }[]; }) => Promise<{ savedFiles: FileId[]; erroredFiles: FileId[]; }>
   saveToStorage: (portal: Portal, elements: readonly SyncableExcalidrawElement[], appState: AppState) => Promise<readonly SyncableExcalidrawElement[] | null>
   loadFromStorage: (roomId: string, roomKey: string, socket: Socket | null) => Promise<readonly SyncableExcalidrawElement[] | null>
   loadFilesFromStorage: (prefix: string, decryptionKey: string, fileIds: readonly FileId[]) => Promise<{ loadedFiles: BinaryFileData[]; erroredFiles: Map<FileId, true>; }>
 }
-
+export interface StorageProvider {
+  fetchRecord: (roomId: string) => Promise<{ id: string, ciphertext: ArrayBuffer, iv: Uint8Array } | null | undefined>
+  updateRecord: (id: string, data: { roomId: string; sceneVersion: number; ciphertext: number[]; iv: number[]; }) => Promise<void>
+  createRecord: (data: { roomId: string; sceneVersion: number; ciphertext: number[]; iv: number[]; }) => Promise<void>
+  saveFile: (prefix: string, id: FileId, blob: Blob) => Promise<void>
+  getFileUrl: (prefix: string, id: string) => Promise<string | null>
+}
 // -----------------------------------------------------------------------------
 export class Storage implements StorageClass {
-  private pbEndpoint: string;
-  private pb: PocketBase;
-  constructor() {
-    this.pbEndpoint = appJotaiStore.get(storageServerUrlAtom);
-    this.pb = new PocketBase(this.pbEndpoint);
-    this.pb.autoCancellation(false);
+  private storageProvider: StorageProvider;
+  constructor(storageProvider: StorageProvider) {
+    this.storageProvider = storageProvider;
   }
   isSavedToStorage = (
     portal: Portal,
@@ -68,17 +67,13 @@ export class Storage implements StorageClass {
     await Promise.all(
       files.map(async ({ id, buffer }) => {
         try {
-          const formData = new FormData();
-          formData.append("ref", `${prefix}/${id}`);
-          formData.append(
-            "file",
+          await this.storageProvider.saveFile(
+            prefix,
+            id,
             new Blob([buffer], {
               type: MIME_TYPES.binary,
             }),
-            id,
-          );
-
-          await this.pb.collection("files").create(formData);
+          )
           savedFiles.push(id);
         } catch (error) {
           erroredFiles.push(id);
@@ -105,18 +100,7 @@ export class Storage implements StorageClass {
 
     try {
       // Check if record exists
-      let record;
-      try {
-        const records = await this.pb
-          .collection("scenes")
-          .getFullList({ filter: `roomId="${roomId}"` });
-        if (records.length > 0) {
-          record = records[0];
-        }
-      } catch {
-        // Record doesn't exist, create new
-        record = null;
-      }
+      let record = await this.storageProvider.fetchRecord(roomId);
 
       const { ciphertext, iv } = await this.encryptElements(roomKey, elements);
       const sceneVersion = getSceneVersion(elements);
@@ -138,24 +122,22 @@ export class Storage implements StorageClass {
           ),
         );
         // Update existing record
-        await this.pb.collection("scenes").update(record.id, {
+        await this.storageProvider.updateRecord(record.id, {
           roomId,
           sceneVersion,
           ciphertext: Array.from(new Uint8Array(ciphertext)),
-          iv: Array.from(iv),
-          roomKey: null,
-        });
+          iv: Array.from(iv)
+        })
 
         return reconciledElements;
       }
       // Create new record
-      await this.pb.collection("scenes").create({
+      await this.storageProvider.createRecord({
         roomId,
         sceneVersion,
         ciphertext: Array.from(new Uint8Array(ciphertext)),
         iv: Array.from(iv),
-        roomKey: null,
-      });
+      })
 
       return elements;
     } catch (error) {
@@ -169,13 +151,8 @@ export class Storage implements StorageClass {
     socket: Socket | null,
   ): Promise<readonly SyncableExcalidrawElement[] | null> => {
     try {
-      const records = await this.pb
-        .collection("scenes")
-        .getFullList({ filter: `roomId="${roomId}"` });
-      if (records.length === 0) {
-        return null;
-      }
-      const record = records[0];
+      const record = await this.storageProvider.fetchRecord(roomId);
+      if (!record) return null;
       const data: StorageStoredScene = {
         ciphertext: new Uint8Array(record.ciphertext).buffer,
         iv: new Uint8Array(record.iv),
@@ -205,11 +182,8 @@ export class Storage implements StorageClass {
     await Promise.all(
       [...new Set(fileIds)].map(async (id) => {
         try {
-          const file = await this.pb
-            .collection("files")
-            .getFullList({ filter: `ref="/${prefix}/${id}"` });
-          if (file.length !== 0) {
-            const fileUrl = `${this.pbEndpoint}/api/files/files/${file[0].id}/${file[0].file}`;
+          const fileUrl = await this.storageProvider.getFileUrl(prefix, id)
+          if (fileUrl) {
             const response = await fetch(fileUrl);
 
             if (response.status < 400) {
@@ -233,6 +207,8 @@ export class Storage implements StorageClass {
             } else {
               erroredFiles.set(id, true);
             }
+          } else {
+            erroredFiles.set(id, true);
           }
         } catch (error) {
           erroredFiles.set(id, true);
@@ -266,6 +242,62 @@ export class Storage implements StorageClass {
     );
     return JSON.parse(decodedData);
   };
+  // fetchRecord = async (roomId: string): Promise<RecordModel | null | undefined> => {
+  //   let record;
+  //   try {
+  //     const records = await this.pb
+  //       .collection("scenes")
+  //       .getFullList({ filter: `roomId="${roomId}"` });
+  //     if (records.length > 0) {
+  //       record = records[0];
+  //     }
+  //   } catch {
+  //     // Record doesn't exist, create new
+  //     record = null;
+  //   }
+  //   return record
+  // }
+  // updateRecord = async (id: string, data: { roomId: string, sceneVersion: number, ciphertext: number[], iv: number[] }): Promise<void> => {
+  //   const { roomId, sceneVersion, ciphertext, iv } = data;
+  //   await this.pb.collection("scenes").update(id, {
+  //     roomId,
+  //     sceneVersion,
+  //     ciphertext,
+  //     iv,
+  //     roomKey: null,
+  //   });
+  // }
+  // createRecord = async (data: { roomId: string, sceneVersion: number, ciphertext: number[], iv: number[] }): Promise<void> => {
+  //   const { roomId, sceneVersion, ciphertext, iv } = data;
+  //   await this.pb.collection("scenes").create({
+  //     roomId,
+  //     sceneVersion,
+  //     ciphertext,
+  //     iv,
+  //     roomKey: null,
+  //   });
+  // }
+  // saveFile = async (prefix: string, id: FileId, blob: Blob): Promise<void> => {
+  //   const formData = new FormData();
+  //   formData.append("ref", `${prefix}/${id}`);
+  //   formData.append(
+  //     "file",
+  //     blob,
+  //     id,
+  //   );
+
+  //   await this.pb.collection("files").create(formData);
+  // }
+  // getFileUrl = async (prefix: string, id: string): Promise<string | null> => {
+  //   const file = await this.pb
+  //     .collection("files")
+  //     .getFullList({ filter: `ref="/${prefix}/${id}"` });
+  //   if (file.length != 0) {
+  //     return `${this.pbEndpoint}/api/files/files/${file[0].id}/${file[0].file}`;
+  //   } else {
+  //     return null;
+  //   }
+  // }
 }
 
 interface StorageStoredScene {
