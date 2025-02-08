@@ -24,7 +24,7 @@ export { MIME_TYPES };
 type ExportOpts = {
   elements: readonly NonDeleted<ExcalidrawElement>[];
   appState?: Partial<Omit<AppState, "offsetTop" | "offsetLeft">>;
-  files: BinaryFiles | null;
+  files: BinaryFiles | null | undefined;
   maxWidthOrHeight?: number;
   exportingFrame?: ExcalidrawFrameLikeElement | null;
   getDimensions?: (

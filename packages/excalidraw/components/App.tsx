@@ -3181,7 +3181,7 @@ class App extends React.Component<AppProps, AppState> {
 
   addElementsFromPasteOrLibrary = (opts: {
     elements: readonly ExcalidrawElement[];
-    files: BinaryFiles | null;
+    files: BinaryFiles | null | undefined;
     position: { clientX: number; clientY: number } | "cursor" | "center";
     retainSeed?: boolean;
     fitToContent?: boolean;

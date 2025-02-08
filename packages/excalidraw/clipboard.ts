@@ -131,7 +131,7 @@ export const serializeAsClipboardJSON = ({
   files,
 }: {
   elements: readonly NonDeletedExcalidrawElement[];
-  files: BinaryFiles | null;
+  files: BinaryFiles | null | undefined;
 }) => {
   const elementsMap = arrayToMap(elements);
   const framesToCopy = new Set(
@@ -180,7 +180,7 @@ export const serializeAsClipboardJSON = ({
 
 export const copyToClipboard = async (
   elements: readonly NonDeletedExcalidrawElement[],
-  files: BinaryFiles | null,
+  files: BinaryFiles | null | undefined,
   /** supply if available to make the operation more certain to succeed */
   clipboardEvent?: ClipboardEvent | null,
 ) => {
@@ -399,7 +399,7 @@ export const parseClipboard = async (
         programmaticAPI,
       };
     }
-  } catch {}
+  } catch { }
 
   return { text: parsedEventData.value };
 };

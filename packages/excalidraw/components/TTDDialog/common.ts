@@ -46,7 +46,7 @@ interface ConvertMermaidToExcalidrawFormatProps {
   setError: (error: Error | null) => void;
   data: React.MutableRefObject<{
     elements: readonly NonDeletedExcalidrawElement[];
-    files: BinaryFiles | null;
+    files: BinaryFiles | undefined | null;
   }>;
 }
 
