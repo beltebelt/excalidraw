@@ -6,6 +6,7 @@
     "outDir": "dist",
     "skipLibCheck": true,
     "declaration": true,
+    "declarationDir": "./types",
     "allowSyntheticDefaultImports": true,
     "module": "ESNext",
     "moduleResolution": "Node",
