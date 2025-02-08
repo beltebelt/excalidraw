@@ -1,3 +1,9 @@
+# THIS IS AN EXPERIMENTAL POC.
+
+# To implement a configurable storage in excalidraw, which can remove the dependency on firebase and allow end users to implement any self-hosted storage solution.
+
+# NOT READY FOR USE IN PRODUCTION.
+
 <a href="https://excalidraw.com/" target="_blank" rel="noopener">
   <picture>
     <source media="(prefers-color-scheme: dark)" alt="Excalidraw" srcset="https://excalidraw.nyc3.cdn.digitaloceanspaces.com/github/excalidraw_github_cover_2_dark.png" />
