@@ -24,9 +24,17 @@ import PocketBase from "pocketbase";
 import { appJotaiStore } from "../app-jotai";
 import { storageServerUrlAtom } from "../ExcalidrawApp";
 
-// private
+
+export interface StorageClass {
+  isSavedToStorage: (portal: Portal, elements: readonly ExcalidrawElement[]) => boolean;
+  saveFilesToStorage: ({ prefix, files, }: { prefix: string; files: { id: FileId; buffer: Uint8Array; }[]; }) => Promise<{ savedFiles: FileId[]; erroredFiles: FileId[]; }>
+  saveToStorage: (portal: Portal, elements: readonly SyncableExcalidrawElement[], appState: AppState) => Promise<readonly SyncableExcalidrawElement[] | null>
+  loadFromStorage: (roomId: string, roomKey: string, socket: Socket | null) => Promise<readonly SyncableExcalidrawElement[] | null>
+  loadFilesFromStorage: (prefix: string, decryptionKey: string, fileIds: readonly FileId[]) => Promise<{ loadedFiles: BinaryFileData[]; erroredFiles: Map<FileId, true>; }>
+}
+
 // -----------------------------------------------------------------------------
-export class Storage {
+export class Storage implements StorageClass {
   private pbEndpoint: string;
   private pb: PocketBase;
   constructor() {
