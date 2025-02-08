@@ -1,5 +1,5 @@
 import polyfill from "./polyfill";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "./analytics";
 import { getDefaultAppState } from "./appState";
 import { ErrorDialog } from "./components/ErrorDialog";
@@ -89,7 +89,6 @@ import {
   useAtomValue,
   useAtomWithInitialValue,
   appJotaiStore,
-  atom,
 } from "./app-jotai";
 
 import "./index.scss";
@@ -105,7 +104,7 @@ import {
   CommandPalette,
   DEFAULT_CATEGORIES,
 } from "./components/CommandPalette/CommandPalette";
-import { ExcalLogo, usersIcon, share } from "./components/icons";
+import { usersIcon, share } from "./components/icons";
 import { useHandleAppTheme } from "./useHandleAppTheme";
 import { getPreferredLanguage } from "./app-language/language-detector";
 import { useAppLangCode } from "./app-language/language-state";
@@ -115,7 +114,8 @@ import DebugCanvas, {
   loadSavedDebugState,
 } from "./components/DebugCanvas";
 import { isElementLink } from "./element/elementLink";
-import { Storage, StorageProvider } from "./collabData/storage";
+import type { StorageProvider } from "./collabData/storage";
+import { Storage } from "./collabData/storage";
 
 interface ExcalidrawAppProps {
   collabServerUrl: string;
@@ -322,7 +322,10 @@ const initializeScene = async (opts: {
 };
 
 const ExcalidrawWrapper = (props: ExcalidrawAppProps) => {
-  const storage = new Storage(props.storageProvider);
+  const storage = useMemo(
+    () => new Storage(props.storageProvider),
+    [props.storageProvider],
+  );
   const [errorMessage, setErrorMessage] = useState("");
   const isCollabDisabled = isRunningInIframe();
 
@@ -594,7 +597,7 @@ const ExcalidrawWrapper = (props: ExcalidrawAppProps) => {
       );
       clearTimeout(titleTimeout);
     };
-  }, [isCollabDisabled, collabAPI, excalidrawAPI, setLangCode]);
+  }, [isCollabDisabled, collabAPI, excalidrawAPI, setLangCode, storage]);
 
   useEffect(() => {
     const unloadHandler = (event: BeforeUnloadEvent) => {
@@ -750,45 +753,6 @@ const ExcalidrawWrapper = (props: ExcalidrawAppProps) => {
       </div>
     );
   }
-
-  const ExcalidrawPlusCommand = {
-    label: "Excalidraw+",
-    category: DEFAULT_CATEGORIES.links,
-    predicate: true,
-    icon: <div style={{ width: 14 }}>{ExcalLogo}</div>,
-    keywords: ["plus", "cloud", "server"],
-    perform: () => {
-      window.open(
-        `${
-          import.meta.env.VITE_APP_PLUS_LP
-        }/plus?utm_source=excalidraw&utm_medium=app&utm_content=command_palette`,
-        "_blank",
-      );
-    },
-  };
-  const ExcalidrawPlusAppCommand = {
-    label: "Sign up",
-    category: DEFAULT_CATEGORIES.links,
-    predicate: true,
-    icon: <div style={{ width: 14 }}>{ExcalLogo}</div>,
-    keywords: [
-      "excalidraw",
-      "plus",
-      "cloud",
-      "server",
-      "signin",
-      "login",
-      "signup",
-    ],
-    perform: () => {
-      window.open(
-        `${
-          import.meta.env.VITE_APP_PLUS_APP
-        }?utm_source=excalidraw&utm_medium=app&utm_content=command_palette`,
-        "_blank",
-      );
-    },
-  };
 
   return (
     <div

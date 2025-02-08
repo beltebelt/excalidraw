@@ -2,10 +2,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { ExcalidrawApp } from "../packages/excalidraw/ExcalidrawApp";
 import { registerSW } from "virtual:pwa-register";
-import PocketBase, { RecordModel } from "pocketbase";
+import PocketBase from "pocketbase";
 import "../excalidraw-app/sentry";
-import { StorageProvider } from "../packages/excalidraw";
-import { FileId } from "../packages/excalidraw/element/types";
+import type { StorageProvider } from "../packages/excalidraw";
+import type { FileId } from "../packages/excalidraw/element/types";
 window.__EXCALIDRAW_SHA__ = import.meta.env.VITE_APP_GIT_SHA;
 const rootElement = document.getElementById("root")!;
 const root = createRoot(rootElement);
@@ -88,11 +88,10 @@ class PocketbaseStorageProvider implements StorageProvider {
     const file = await this.pb
       .collection("files")
       .getFullList({ filter: `ref="/${prefix}/${id}"` });
-    if (file.length != 0) {
+    if (file.length !== 0) {
       return `${this.pbEndpoint}/api/files/files/${file[0].id}/${file[0].file}`;
-    } else {
-      return null;
     }
+    return null;
   };
 }
 const storageProvider = new PocketbaseStorageProvider();

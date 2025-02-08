@@ -1,8 +1,7 @@
 import React from "react";
-import { loginIcon, ExcalLogo, eyeIcon } from "./icons";
+import { eyeIcon } from "./icons";
 import type { Theme } from "../element/types";
 import { MainMenu } from "../index";
-import { isExcalidrawPlusSignedUser } from "../app_constants";
 import { LanguageList } from "../app-language/LanguageList";
 import { saveDebugState } from "./DebugCanvas";
 

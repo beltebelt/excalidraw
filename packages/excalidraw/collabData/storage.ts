@@ -22,18 +22,59 @@ import type { Socket } from "socket.io-client";
 import type { RemoteExcalidrawElement } from "../data/reconcile";
 
 interface StorageClass {
-  isSavedToStorage: (portal: Portal, elements: readonly ExcalidrawElement[]) => boolean;
-  saveFilesToStorage: ({ prefix, files, }: { prefix: string; files: { id: FileId; buffer: Uint8Array; }[]; }) => Promise<{ savedFiles: FileId[]; erroredFiles: FileId[]; }>
-  saveToStorage: (portal: Portal, elements: readonly SyncableExcalidrawElement[], appState: AppState) => Promise<readonly SyncableExcalidrawElement[] | null>
-  loadFromStorage: (roomId: string, roomKey: string, socket: Socket | null) => Promise<readonly SyncableExcalidrawElement[] | null>
-  loadFilesFromStorage: (prefix: string, decryptionKey: string, fileIds: readonly FileId[]) => Promise<{ loadedFiles: BinaryFileData[]; erroredFiles: Map<FileId, true>; }>
+  isSavedToStorage: (
+    portal: Portal,
+    elements: readonly ExcalidrawElement[],
+  ) => boolean;
+  saveFilesToStorage: ({
+    prefix,
+    files,
+  }: {
+    prefix: string;
+    files: { id: FileId; buffer: Uint8Array }[];
+  }) => Promise<{ savedFiles: FileId[]; erroredFiles: FileId[] }>;
+  saveToStorage: (
+    portal: Portal,
+    elements: readonly SyncableExcalidrawElement[],
+    appState: AppState,
+  ) => Promise<readonly SyncableExcalidrawElement[] | null>;
+  loadFromStorage: (
+    roomId: string,
+    roomKey: string,
+    socket: Socket | null,
+  ) => Promise<readonly SyncableExcalidrawElement[] | null>;
+  loadFilesFromStorage: (
+    prefix: string,
+    decryptionKey: string,
+    fileIds: readonly FileId[],
+  ) => Promise<{
+    loadedFiles: BinaryFileData[];
+    erroredFiles: Map<FileId, true>;
+  }>;
 }
 export interface StorageProvider {
-  fetchRecord: (roomId: string) => Promise<{ id: string, ciphertext: ArrayBuffer, iv: Uint8Array } | null | undefined>
-  updateRecord: (id: string, data: { roomId: string; sceneVersion: number; ciphertext: number[]; iv: number[]; }) => Promise<void>
-  createRecord: (data: { roomId: string; sceneVersion: number; ciphertext: number[]; iv: number[]; }) => Promise<void>
-  saveFile: (prefix: string, id: FileId, blob: Blob) => Promise<void>
-  getFileUrl: (prefix: string, id: string) => Promise<string | null>
+  fetchRecord: (
+    roomId: string,
+  ) => Promise<
+    { id: string; ciphertext: ArrayBuffer; iv: Uint8Array } | null | undefined
+  >;
+  updateRecord: (
+    id: string,
+    data: {
+      roomId: string;
+      sceneVersion: number;
+      ciphertext: number[];
+      iv: number[];
+    },
+  ) => Promise<void>;
+  createRecord: (data: {
+    roomId: string;
+    sceneVersion: number;
+    ciphertext: number[];
+    iv: number[];
+  }) => Promise<void>;
+  saveFile: (prefix: string, id: FileId, blob: Blob) => Promise<void>;
+  getFileUrl: (prefix: string, id: string) => Promise<string | null>;
 }
 // -----------------------------------------------------------------------------
 export class Storage implements StorageClass {
@@ -73,7 +114,7 @@ export class Storage implements StorageClass {
             new Blob([buffer], {
               type: MIME_TYPES.binary,
             }),
-          )
+          );
           savedFiles.push(id);
         } catch (error) {
           erroredFiles.push(id);
@@ -100,7 +141,7 @@ export class Storage implements StorageClass {
 
     try {
       // Check if record exists
-      let record = await this.storageProvider.fetchRecord(roomId);
+      const record = await this.storageProvider.fetchRecord(roomId);
 
       const { ciphertext, iv } = await this.encryptElements(roomKey, elements);
       const sceneVersion = getSceneVersion(elements);
@@ -126,8 +167,8 @@ export class Storage implements StorageClass {
           roomId,
           sceneVersion,
           ciphertext: Array.from(new Uint8Array(ciphertext)),
-          iv: Array.from(iv)
-        })
+          iv: Array.from(iv),
+        });
 
         return reconciledElements;
       }
@@ -137,7 +178,7 @@ export class Storage implements StorageClass {
         sceneVersion,
         ciphertext: Array.from(new Uint8Array(ciphertext)),
         iv: Array.from(iv),
-      })
+      });
 
       return elements;
     } catch (error) {
@@ -152,7 +193,9 @@ export class Storage implements StorageClass {
   ): Promise<readonly SyncableExcalidrawElement[] | null> => {
     try {
       const record = await this.storageProvider.fetchRecord(roomId);
-      if (!record) return null;
+      if (!record) {
+        return null;
+      }
       const data: StorageStoredScene = {
         ciphertext: new Uint8Array(record.ciphertext).buffer,
         iv: new Uint8Array(record.iv),
@@ -182,7 +225,7 @@ export class Storage implements StorageClass {
     await Promise.all(
       [...new Set(fileIds)].map(async (id) => {
         try {
-          const fileUrl = await this.storageProvider.getFileUrl(prefix, id)
+          const fileUrl = await this.storageProvider.getFileUrl(prefix, id);
           if (fileUrl) {
             const response = await fetch(fileUrl);
 
