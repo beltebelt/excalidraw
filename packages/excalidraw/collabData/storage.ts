@@ -73,7 +73,7 @@ export interface StorageProvider {
     ciphertext: number[];
     iv: number[];
   }) => Promise<void>;
-  saveFile: (prefix: string, id: FileId, blob: Blob) => Promise<void>;
+  saveFile: (prefix: string, id: string, blob: Blob) => Promise<void>;
   getFileUrl: (prefix: string, id: string) => Promise<string | null>;
 }
 // -----------------------------------------------------------------------------
