@@ -830,6 +830,7 @@ const ExcalidrawWrapper = (props: ExcalidrawAppProps) => {
         )}
         {excalidrawAPI && !isCollabDisabled && (
           <Collab
+            collabDetails={props.collabDetails}
             collabServerUrl={props.collabServerUrl}
             storage={storage}
             excalidrawAPI={excalidrawAPI}
