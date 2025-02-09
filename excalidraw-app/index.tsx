@@ -77,7 +77,7 @@ class PocketbaseStorageProvider implements StorageProvider {
       roomKey: null,
     });
   };
-  saveFile = async (prefix: string, id: FileId, blob: Blob): Promise<void> => {
+  saveFile = async (prefix: string, id: string, blob: Blob): Promise<void> => {
     const formData = new FormData();
     formData.append("ref", `${prefix}/${id}`);
     formData.append("file", blob, id);
