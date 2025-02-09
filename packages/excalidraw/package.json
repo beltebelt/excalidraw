@@ -1,6 +1,6 @@
 {
   "name": "excalidraw-with-storage",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "main": "./dist/prod/index.js",
   "type": "module",
   "module": "./dist/prod/index.js",
