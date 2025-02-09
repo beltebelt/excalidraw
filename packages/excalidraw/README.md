@@ -1,3 +1,11 @@
+## THIS IS AN EXPERIMENTAL POC.
+
+## To implement a configurable storage in excalidraw, which can remove the dependency on firebase and allow end users to implement any self-hosted storage solution.
+
+## NOT READY FOR USE IN PRODUCTION.
+
+Check out [examples repo](https://github.com/beltebelt/excalidraw-with-storage-examples) for how this project works
+
 # Excalidraw
 
 **Excalidraw** is exported as a component to directly embed in your projects.
