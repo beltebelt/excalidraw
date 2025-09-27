@@ -9,7 +9,6 @@ import type {
 } from "../../types";
 import { CloseIcon } from "../icons";
 import { Island } from "../Island";
-import { throttle } from "lodash";
 import Dimension from "./Dimension";
 import Angle from "./Angle";
 import FontSize from "./FontSize";
@@ -32,6 +31,7 @@ import { isGridModeEnabled } from "../../snapping";
 import { getUncroppedWidthAndHeight } from "../../element/cropElement";
 import { round } from "../../../math";
 import { frameAndChildrenSelectedTogether } from "../../frame";
+import throttle from "lodash.throttle";
 
 interface StatsProps {
   app: AppClassProperties;

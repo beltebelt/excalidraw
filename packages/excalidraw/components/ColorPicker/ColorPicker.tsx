@@ -103,12 +103,12 @@ const ColorPickerPopupContent = ({
     <PropertiesPopover
       container={container}
       style={{ maxWidth: "13rem" }}
-      onFocusOutside={(event) => {
+      onFocusOutside={(event: any) => {
         // refocus due to eye dropper
         focusPickerContent();
         event.preventDefault();
       }}
-      onPointerDownOutside={(event) => {
+      onPointerDownOutside={(event: any) => {
         if (eyeDropperState) {
           // prevent from closing if we click outside the popover
           // while eyedropping (e.g. click when clicking the sidebar;
